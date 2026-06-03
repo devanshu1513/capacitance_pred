@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Old / renamed data files
+composites (1).csv
+composites.xlsx
+
+# Patch helper (not part of the project)
+patch_notebook.py
+
+# CatBoost training artifacts
+catboost_info/
