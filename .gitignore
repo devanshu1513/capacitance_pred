@@ -34,3 +34,63 @@ patch_notebook.py
 
 # CatBoost training artifacts
 catboost_info/
+
+# Generated output files (do not commit)
+external_validation_predictions.xlsx
+
+# Generated plot images (do not commit)
+external_validation_parity_plot.png
+permutation_importance_top20.png
+Interval_parity_plot.png
+
+# Helper / diagnostic scripts (not part of published model)
+add_comments.py
+audit_uq.py
+analyze_cells.py
+dump_all_cells.py
+dump_all_cells2.py
+dump_cells.py
+dump_cells2.py
+dump_cells3.py
+dump_cells4.py
+run_nb.py
+restructure_script.py
+restructure_uq.py
+modify_nb.py
+fix_cell38.py
+fix_imports.py
+inspect_cell38.py
+inspect_model.py
+inspect_uq.py
+inspect_uq2.py
+patch_ext_cell.py
+check_cell61.py
+check_cells.py
+check_nb.py
+verify.py
+extract40.py
+extract_model_out.py
+extract_outputs.py
+search_biomass.py
+search_failing.py
+search_features.py
+generate_cell_map.py
+list_cells.py
+list2.py
+finalize_nb.py
+swap_cells.py
+split_cell.py
+print_ablation.py
+find_ext_error.py
+find_model_g.py
+cell61_fixed.py
+final_check.py
+summarize_structure.py
+notebook_code.py
+external_validation (1).py
+
+# Text dumps
+*.txt
+
+# Scratch directory
+scratch/
