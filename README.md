@@ -1,58 +1,28 @@
-# Cross-Paper Review: Capacitance Prediction for Supercapacitor Electrodes
+# Supercapacitor Capacitance Prediction
 
-A portfolio review of a machine-learning project predicting specific capacitance of biomass-derived carbon and composite supercapacitor electrodes. The upstream implementation uses CatBoost, engineered electrochemical and material features, paper-wise evaluation, external validation, feature analysis, and split conformal prediction intervals.
+An independent CatBoost pipeline for predicting gravimetric specific capacitance (F/g) from literature-derived electrode data. The pipeline reserves entire publications for validation and final testing, so held-out test papers do not guide early stopping.
 
-> **Attribution:** This is a public fork of [khub-crystalparadigm/capacitance_pred](https://github.com/khub-crystalparadigm/capacitance_pred). The model implementation, notebook, and source datasets remain from that project. My work in this portfolio is the independent evaluation review documented below; I did not create the original model or dataset.
+## What I implemented
 
-## My contribution: cross-paper validation review
+- DOI-disjoint train, validation, and test partitioning with explicit overlap checks.
+- Unit filtering and conversion, numeric range parsing, categorical normalization, and material/electrochemical feature engineering.
+- CatBoost early stopping on validation papers; the held-out test papers are evaluated once after training.
+- Saved test metrics, predictions, and model artifact for reproducibility.
 
-I inspected the notebook and its saved outputs to assess whether its evaluation supports claims about predictions on new publications. The notebook was not rerun for this review, so the values below are reported outputs rather than independently reproduced results.
+The implementation is in train_model.py. It was written for this portfolio and has not yet been run; reported model metrics are not available until it is executed.
 
-### Results reported by the notebook
+## Run
 
-| Evaluation | Records | R² | RMSE (F/g) | MAE (F/g) |
-|---|---:|---:|---:|---:|
-| Random held-out split | 110 | 0.930 | 86.21 | — |
-| DOI-grouped held-out split | 95 | 0.150 | 495.61 | — |
-| External workbook | 31 | 0.235 | 472.20 | 386.34 |
+Install catboost, scikit-learn, pandas, and numpy, then run:
 
-The gap between the random split and DOI-grouped/external results suggests the random split overstates performance on unseen papers. External validation also reports Pearson *r* = 0.712 and Spearman ρ = 0.552; correlation does not imply small absolute prediction errors.
+    python train_model.py --data composites.csv --out artifacts
 
-### Findings
+The script writes the trained model, metrics.json, and test_predictions.csv to the output directory. Its DOI split is deterministic with seed 42.
 
-- **Test-set reuse during early stopping:** each held-out test set is passed to CatBoost for early stopping, then used for the reported score. Since test labels influence the selected iteration, those scores are not unbiased final estimates.
-- **DOI interval under-coverage:** saved DOI-grouped conformal intervals cover 76.8% of test records, below the nominal 90%. The notebook's interpretation text incorrectly describes both splits as close to 90% coverage.
-- **Inactive feature:** is_three_electrode appears to be zero for every record. Labels are normalized to three_electrode, then the feature is derived by searching for the character 3.
-- **Reproducibility gap:** saved notebook outputs come from a Windows environment. One cell may install openpyxl automatically, so a clean rerun should first review that cell and record the environment.
+## Data and attribution
 
-### Recommended evaluation redesign
+This repository is a public fork of [khub-crystalparadigm/capacitance_pred](https://github.com/khub-crystalparadigm/capacitance_pred). The original notebook and both literature-derived datasets are retained from upstream and remain attributed to that project. My implementation is a separate baseline; it does not reproduce or replace the upstream notebook.
 
-1. Reserve papers for a final DOI-level test set before model development.
-2. Use only training and validation papers for early stopping and feature choices.
-3. Keep conformal calibration papers disjoint from model fitting and final testing; assess coverage at paper level as well as row level.
-4. Fix the electrode-configuration indicator and add checks that verify engineered flags vary as expected.
-5. Rerun from a clean environment and report split DOI lists, package versions, metrics, and interval coverage together.
+## Validation notes
 
-These are recommendations from the review, not changes already applied to the upstream model.
-
-## Upstream project
-
-The upstream project predicts gravimetric specific capacitance (F/g) from literature-derived electrode and material descriptors using CatBoost. Its notebook includes preprocessing, feature engineering, random and DOI-grouped splits, external validation, feature importance, SHAP, ablation analysis, and conformal intervals.
-
-The training CSV contains 910 records from 52 DOIs; the notebook reports 549 records after filtering. The external validation workbook contains 31 rows.
-
-## Files and use
-
-- Final_Model_Catboost.ipynb — upstream model and analysis notebook.
-- composites.csv — upstream literature-derived training data.
-- Master_External_Validation_Dataset.xlsx — upstream external-validation data.
-
-The upstream README recommends Python 3.8+ with catboost, scikit-learn, xgboost, shap, pandas, numpy, matplotlib, openpyxl, and scipy. Open the notebook with both datasets in the same directory. Some cells train several models and may take several minutes. Review the automatic openpyxl installation cell before running.
-
-## Resume framing
-
-A truthful description of this contribution is:
-
-> Audited a literature-based CatBoost capacitance predictor's saved random-split, DOI-grouped, and external-validation results; identified test-set reuse in early stopping, DOI interval under-coverage, and an inactive electrode-configuration feature; proposed a paper-disjoint evaluation redesign.
-
-List the upstream model as a forked project and distinguish your review from the original implementation.
+The upstream notebook's saved outputs report R² = 0.930 on a random row split, 0.150 on a DOI-grouped split, and 0.235 on a 31-row external set. It also uses test data for early stopping, reports only 76.8% coverage for DOI-grouped nominal 90% intervals, and appears to create an always-zero three-electrode flag. Those are saved upstream results, not results from my new pipeline. The new script avoids the test-set early-stopping issue; it still needs to be run and its performance independently assessed before drawing conclusions.
