@@ -1,165 +1,58 @@
-# CatBoost Supercapacitor Specific Capacitance Predictor
+# Cross-Paper Review: Capacitance Prediction for Supercapacitor Electrodes
 
-A machine learning pipeline to predict **specific capacitance (F/g)** of biomass-derived
-carbon composite supercapacitor electrodes using CatBoostRegressor.
+A portfolio review of a machine-learning project predicting specific capacitance of biomass-derived carbon and composite supercapacitor electrodes. The upstream implementation uses CatBoost, engineered electrochemical and material features, paper-wise evaluation, external validation, feature analysis, and split conformal prediction intervals.
 
----
+> **Attribution:** This is a public fork of [khub-crystalparadigm/capacitance_pred](https://github.com/khub-crystalparadigm/capacitance_pred). The model implementation, notebook, and source datasets remain from that project. My work in this portfolio is the independent evaluation review documented below; I did not create the original model or dataset.
 
-## Repository Structure
+## My contribution: cross-paper validation review
 
-```
-├── Final_Model_Catboost.ipynb              # Complete pipeline notebook
-├── composites.csv                           # Training dataset
-├── Master_External_Validation_Dataset.xlsx # Independent external validation dataset
-└── README.md
-```
+I inspected the notebook and its saved outputs to assess whether its evaluation supports claims about predictions on new publications. The notebook was not rerun for this review, so the values below are reported outputs rather than independently reproduced results.
 
----
+### Results reported by the notebook
 
-## Overview
+| Evaluation | Records | R² | RMSE (F/g) | MAE (F/g) |
+|---|---:|---:|---:|---:|
+| Random held-out split | 110 | 0.930 | 86.21 | — |
+| DOI-grouped held-out split | 95 | 0.150 | 495.61 | — |
+| External workbook | 31 | 0.235 | 472.20 | 386.34 |
 
-This project builds a gradient-boosting regression model to predict specific capacitance
-of electrode materials used in supercapacitors. The pipeline includes:
+The gap between the random split and DOI-grouped/external results suggests the random split overstates performance on unseen papers. External validation also reports Pearson *r* = 0.712 and Spearman ρ = 0.552; correlation does not imply small absolute prediction errors.
 
-- Data filtering and unit standardization (GCD test mode, electrode measurements only)
-- Biomass precursor grouping into semantic categories
-- Physics-informed feature engineering (6 cumulative feature groups)
-- Two evaluation strategies: random split and DOI-grouped (paper-wise) split
-- External validation on a completely independent dataset from separate publications
-- Permutation importance on the held-out DOI-grouped test set
-- SHAP-based model interpretability
-- Ablation study across 6 progressively richer feature sets
-- Uncertainty Quantification via Split Conformal Prediction (90% prediction intervals)
+### Findings
 
----
+- **Test-set reuse during early stopping:** each held-out test set is passed to CatBoost for early stopping, then used for the reported score. Since test labels influence the selected iteration, those scores are not unbiased final estimates.
+- **DOI interval under-coverage:** saved DOI-grouped conformal intervals cover 76.8% of test records, below the nominal 90%. The notebook's interpretation text incorrectly describes both splits as close to 90% coverage.
+- **Inactive feature:** is_three_electrode appears to be zero for every record. Labels are normalized to three_electrode, then the feature is derived by searching for the character 3.
+- **Reproducibility gap:** saved notebook outputs come from a Windows environment. One cell may install openpyxl automatically, so a clean rerun should first review that cell and record the environment.
 
-## Dataset
+### Recommended evaluation redesign
 
-**Training:** `composites.csv`
+1. Reserve papers for a final DOI-level test set before model development.
+2. Use only training and validation papers for early stopping and feature choices.
+3. Keep conformal calibration papers disjoint from model fitting and final testing; assess coverage at paper level as well as row level.
+4. Fix the electrode-configuration indicator and add checks that verify engineered flags vary as expected.
+5. Rerun from a clean environment and report split DOI lists, package versions, metrics, and interval coverage together.
 
-Sourced from experimental literature on carbon-based composite electrode materials.
-After filtering:
-- Measurement type: `electrode`
-- Test mode: GCD (Galvanostatic Charge-Discharge)
-- Current density unit: `mA/g` or `A/g` (standardized to A/g)
-- Capacitance unit: `F/g` or `mF/g` (standardized to F/g)
+These are recommendations from the review, not changes already applied to the upstream model.
 
-**External Validation:** `Master_External_Validation_Dataset.xlsx`
+## Upstream project
 
-An independent set of measurements sourced from publications not present in the training
-set. Used to evaluate true cross-paper generalization performance of the DOI-grouped model.
+The upstream project predicts gravimetric specific capacitance (F/g) from literature-derived electrode and material descriptors using CatBoost. Its notebook includes preprocessing, feature engineering, random and DOI-grouped splits, external validation, feature importance, SHAP, ablation analysis, and conformal intervals.
 
----
+The training CSV contains 910 records from 52 DOIs; the notebook reports 549 records after filtering. The external validation workbook contains 31 rows.
 
-## Features
+## Files and use
 
-Six progressively richer feature groups:
+- Final_Model_Catboost.ipynb — upstream model and analysis notebook.
+- composites.csv — upstream literature-derived training data.
+- Master_External_Validation_Dataset.xlsx — upstream external-validation data.
 
-| Group | Description |
-|---|---|
-| **Base** | Surface area, pore volume, pore size, current density, potential window, electrolyte concentration, mass & metal loading |
-| **Physics-Informed** | Voltage², total resistance, conductivity index, log/inverse current density, SSA–pore interaction |
-| **Electrochemical/Structural** | Rct, Rs, log-resistances, ID/IG ratio, carbonization & activation temperatures, activation ratio |
-| **Interaction** | SSA × pore, surface-to-pore ratio, biomass-modulated SSA/pore effects |
-| **Regime/Material** | Binary flags (carbon, composite, metal oxide, metal sulfide, pseudocapacitive, 3-electrode), material–SSA interaction terms |
-| **Categorical** | Biomass precursor, biomass group, activation agent, electrolyte, electrolyte state, material type, electrode configuration |
+The upstream README recommends Python 3.8+ with catboost, scikit-learn, xgboost, shap, pandas, numpy, matplotlib, openpyxl, and scipy. Open the notebook with both datasets in the same directory. Some cells train several models and may take several minutes. Review the automatic openpyxl installation cell before running.
 
----
+## Resume framing
 
-## Model
+A truthful description of this contribution is:
 
-```python
-CatBoostRegressor(
-    iterations=3000,
-    depth=6,
-    learning_rate=0.03,
-    l2_leaf_reg=5,
-    random_strength=1,
-    bagging_temperature=1,
-    border_count=128,
-    loss_function="RMSE",
-    eval_metric="R2",
-    early_stopping_rounds=100,
-    random_seed=42
-)
-```
+> Audited a literature-based CatBoost capacitance predictor's saved random-split, DOI-grouped, and external-validation results; identified test-set reuse in early stopping, DOI interval under-coverage, and an inactive electrode-configuration feature; proposed a paper-disjoint evaluation redesign.
 
-Categorical features are passed natively to CatBoost via `Pool` — no one-hot encoding required.
-
----
-
-## Evaluation Strategy
-
-| Strategy | Description |
-|---|---|
-| **Random Split** | Standard 80/20 train-test split |
-| **DOI Group Split** | All measurements from the same DOI kept in the same fold — tests true cross-paper generalization |
-| **External Validation** | Completely independent dataset from separate publications |
-
-Actual metric values (R², RMSE, MAE, Pearson r, Spearman ρ) are printed at runtime in the notebook.
-
----
-
-## Ablation Study
-
-Six cumulative feature sets evaluated with 30-repeat DOI-grouped cross-validation:
-
-```
-Stage 1: Base
-Stage 2: Base + Physics-Informed
-Stage 3: Base + Physics + Electrochemical/Structural
-Stage 4: Base + Physics + Electrochemical + Interaction
-Stage 5: Base + Physics + Electrochemical + Interaction + Regime/Material
-Stage 6: Full Model (All Features incl. Categorical)
-```
-
----
-
-## Uncertainty Quantification
-
-Split Conformal Prediction is used to produce **90% prediction intervals**:
-- **Random Split** calibration
-- **DOI Group Split** calibration (tests cross-paper interval reliability)
-
-Coverage calibration tables and parity plots with error bars are generated automatically.
-
----
-
-## Interpretability
-
-- **Feature Importance** — CatBoost built-in importance (PredictionValuesChange), top-20 bar chart
-- **Permutation Importance** — Held-out DOI-grouped test set, top-20 bar chart
-- **SHAP** — TreeExplainer summary plot showing direction and magnitude per feature per sample
-
----
-
-## Installation
-
-```bash
-pip install catboost scikit-learn xgboost shap pandas numpy matplotlib openpyxl scipy
-```
-
-Python 3.8+ recommended.
-
----
-
-## Usage
-
-1. Place `composites.csv` and `Master_External_Validation_Dataset.xlsx` in the same
-   directory as the notebook.
-2. Open and run `Final_Model_Catboost.ipynb` top-to-bottom.
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---|---|
-| `catboost` | Primary model |
-| `scikit-learn` | Baselines, metrics, conformal prediction utilities |
-| `xgboost` | Baseline model |
-| `shap` | SHAP interpretability |
-| `scipy` | Pearson/Spearman correlation, paired t-tests |
-| `openpyxl` | Read/write Excel files |
-| `pandas`, `numpy` | Data processing |
-| `matplotlib` | Plotting |
+List the upstream model as a forked project and distinguish your review from the original implementation.
